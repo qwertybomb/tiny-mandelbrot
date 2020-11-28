@@ -93,8 +93,8 @@ static HGLRC create_opengl_context(HDC const device_context)
         ExitProcess(GetLastError());
     }
     
-    // create an opengl 2.1 context
-    HGLRC temporary_opengl_context = wglCreateContext(device_context);
+    // create an opengl 3.3 context
+    HGLRC const result = wglCreateContext(device_context);
     
     // make the temporary opengl context current and active
     wglMakeCurrent(device_context, temporary_opengl_context);
@@ -149,7 +149,7 @@ static void create_window(wchar_t const *title, int32_t width, int32_t height)
         .hInstance = hInstance,
         .hIcon = LoadIconW(hInstance, IDI_APPLICATION),
         .hCursor = LoadCursorW(NULL, IDC_ARROW),
-        .lpszClassName = L"Class Name",
+        .lpszClassName = L"a",
         .hIconSm = LoadIconW(hInstance, IDI_APPLICATION)
     };
     

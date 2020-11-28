@@ -27,6 +27,7 @@ typedef struct Window
     int32_t width, height;
     float scale, smooth_scale;
     float pos[2], smooth_pos[2];
+    int32_t max_iterations;
 } Window;
 
 // NOTE: we could use GetWindowLongPtr and SetWindowLongPtr
@@ -162,6 +163,7 @@ static void create_window(wchar_t const *title, int32_t width, int32_t height)
         .height = height,
         .scale = 1.0f,
         .smooth_scale = 0.5f,
+        .max_iterations = 200,
     };
     
     // show and update window
@@ -240,30 +242,30 @@ int main(void)
                                                       vec2(1, 1));
                         
                         uv = coords[gl_VertexID];
-                        gl_Position = vec4(positions[gl_VertexID], 0.0f, 1.0f);
+                        gl_Position = vec4(positions[gl_VertexID], 0.0, 1.0);
                     });
     
     char const *fragment_shader =
         "#version 330 core\n"
-        "#define MAX_ITERATIONS 200\n"
         "#define BAILOUT 200000.0f\n"
         SHADER_CODE(out vec4 fragcolor;
                     in vec2 uv;
+                    uniform int max_iterations;
                     uniform float aspect;
                     uniform vec4 data;
                     void main(void)
                     {
-                        vec2 c = ((uv * 3.0f - 1.5f) * data[1] - data.zw)  * vec2(aspect, 1.0f);
+                        vec2 c = ((uv * 3.0 - 1.5) * data[1] - data.zw)  * vec2(aspect, 1);
                         vec2 z = vec2(0);
                         
                         int i;
-                        for(i = 0; i < MAX_ITERATIONS && dot(z, z) < BAILOUT; ++i)
-                            z = vec2(z.x * z.x - z.y * z.y, z.x * z.y * 2.0f) + c;
+                        for(i = 0; i < max_iterations && dot(z, z) < BAILOUT; ++i)
+                            z = vec2(z.x * z.x - z.y * z.y, z.x * z.y * 2.0) + c;
                         
-                        float s = sqrt((i - log2(log(dot(z, z)) / log(BAILOUT))) / float(MAX_ITERATIONS));
-                        vec3 cs = (sin(data[0] + 20.0f * s * (vec3(0.3f, 0.6f, 0.9f) + 1.2f)) * 0.5f + 0.5f) 
-                            * float(i != MAX_ITERATIONS);
-                        fragcolor = vec4(cs, 1.0f);
+                        float s = sqrt((i - log2(log(dot(z, z)) / log(BAILOUT))) / float(max_iterations));
+                        vec3 cs = (sin(data[0] + 20.0 * s * vec3(1.5, 1.8, 2.1)) * 0.5 + 0.5) 
+                            * float(i != max_iterations);
+                        fragcolor = vec4(cs, 1);
                     });
     
     unsigned int shader_program = compile_shaders(vertex_shader, 
@@ -287,58 +289,6 @@ int main(void)
             DispatchMessageW(&msg);
             
             if (msg.message ==  WM_QUIT) break;
-            
-            // handle input
-            {
-                // some keyboards have two plus keys(number row and numpad)
-                if (GetAsyncKeyState(VK_OEM_PLUS) ||
-                    GetAsyncKeyState(VK_ADD))
-                {
-                    global_window.scale *= 1.0f - 0.01f;
-                }
-                
-                // see the above comment
-                if(GetAsyncKeyState(VK_OEM_MINUS) ||
-                   GetAsyncKeyState(VK_SUBTRACT))
-                {
-                    global_window.scale *= 1.0f + 0.01f;
-                }
-                
-                if (GetAsyncKeyState('W'))
-                {
-                    global_window.pos[1] -= global_window.scale * 0.01f; 
-                }
-                
-                if (GetAsyncKeyState('S'))
-                {
-                    global_window.pos[1] += global_window.scale * 0.01f; 
-                }
-                
-                if (GetAsyncKeyState('A'))
-                {
-                    global_window.pos[0] += global_window.scale * 0.01f; 
-                }
-                
-                if  (GetAsyncKeyState('D'))
-                {
-                    global_window.pos[0] -= global_window.scale * 0.01f; 
-                }
-                
-                // if ctrl-r is pressed reset the scale and pos
-                if (GetAsyncKeyState(VK_CONTROL) &&
-                    GetAsyncKeyState('R'))
-                {
-                    global_window.pos[0] = 0.0f;
-                    global_window.pos[1] = 0.0f;
-                    global_window.scale = 1.0f;
-                }
-                
-                if (GetAsyncKeyState(VK_MENU) &&
-                    GetAsyncKeyState(VK_F4))
-                {
-                    break;
-                }
-            }
         }
         
         else
@@ -353,6 +303,8 @@ int main(void)
                         (float)global_window.height);
             glUniform4f(glGetUniformLocation(shader_program, "data"), color_offset, global_window.smooth_scale, 
                         global_window.smooth_pos[0], global_window.smooth_pos[1]);
+            glUniform1i(glGetUniformLocation(shader_program, "max_iterations"),
+                        global_window.max_iterations);
             
             // draw a quad
             glBindVertexArray(vao);
@@ -364,15 +316,77 @@ int main(void)
             // the smooth values will smoothly converge to the real values
             {
                 global_window.smooth_pos[0] = lerp(global_window.smooth_pos[0], 
-                                                   global_window.pos[0], 0.01f);
+                                                   global_window.pos[0], 0.005f);
                 global_window.smooth_pos[1] = lerp(global_window.smooth_pos[1], 
-                                                   global_window.pos[1], 0.01f);
+                                                   global_window.pos[1], 0.005f);
                 
                 global_window.smooth_scale = lerp(global_window.smooth_scale,
-                                                  global_window.scale, 0.01f);
+                                                  global_window.scale, 0.005f);
             }
             
             color_offset += 0.001f;
+        }
+        
+        // handle input
+        {
+            // some keyboards have two plus keys(number row and numpad)
+            if (GetAsyncKeyState(VK_OEM_PLUS) ||
+                GetAsyncKeyState(VK_ADD))
+            {
+                global_window.scale *= 1.0f - 0.00075f;
+            }
+            
+            // see the above comment
+            if(GetAsyncKeyState(VK_OEM_MINUS) ||
+               GetAsyncKeyState(VK_SUBTRACT))
+            {
+                global_window.scale *= 1.0f + 0.00075f;
+            }
+            
+            if (GetAsyncKeyState('W'))
+            {
+                global_window.pos[1] -= global_window.scale * 0.00075f; 
+            }
+            
+            if (GetAsyncKeyState('S'))
+            {
+                global_window.pos[1] += global_window.scale * 0.00075f; 
+            }
+            
+            if (GetAsyncKeyState('A'))
+            {
+                global_window.pos[0] += global_window.scale * 0.00075f; 
+            }
+            
+            if  (GetAsyncKeyState('D'))
+            {
+                global_window.pos[0] -= global_window.scale * 0.00075f; 
+            }
+            
+            // if ctrl-r is pressed reset the scale and pos
+            if (GetAsyncKeyState(VK_CONTROL) &&
+                GetAsyncKeyState('R'))
+            {
+                global_window.pos[0] = 0.0f;
+                global_window.pos[1] = 0.0f;
+                global_window.scale = 1.0f;
+            }
+            
+            if (GetAsyncKeyState(VK_UP))
+            {
+                global_window.max_iterations += 1;
+            }
+            
+            if (GetAsyncKeyState(VK_DOWN))
+            {
+                global_window.max_iterations -= 1;
+            }
+            
+            if (GetAsyncKeyState(VK_MENU) &&
+                GetAsyncKeyState(VK_F4))
+            {
+                break;
+            }
         }
     }
     

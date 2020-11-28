@@ -261,7 +261,8 @@ int main(void)
                             z = vec2(z.x * z.x - z.y * z.y, z.x * z.y * 2.0f) + c;
                         
                         float s = sqrt((i - log2(log(dot(z, z)) / log(BAILOUT))) / float(MAX_ITERATIONS));
-                        vec3 cs = sin(data[0] + 20.0f * s * (vec3(0.3f, 0.6f, 0.9f) + 1.2f)) * 0.5f + 0.5f;
+                        vec3 cs = (sin(data[0] + 20.0f * s * (vec3(0.3f, 0.6f, 0.9f) + 1.2f)) * 0.5f + 0.5f) 
+                            * float(i != MAX_ITERATIONS);
                         fragcolor = vec4(cs, 1.0f);
                     });
     

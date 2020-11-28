@@ -200,21 +200,6 @@ static void create_window(wchar_t const *title, int32_t width, int32_t height)
     UpdateWindow(window_handle);
 }
 
-static void destroy_window(Window *window)
-{
-    // cleanup opengl context
-    {
-        // deactivate the opengl context
-        wglMakeCurrent(NULL, NULL);
-        
-        // delete the opengl context
-        wglDeleteContext(window->opengl_context);
-    }
-    
-    ReleaseDC(window->handle, window->device_context);
-    DestroyWindow(window->handle);
-}
-
 static unsigned int compile_shaders(char const *vertex_shader_source,
                                     char const *fragment_shader_source)
 {
@@ -420,10 +405,6 @@ int main(void)
             color_offset += 0.001f;
         }
     }
-    
-    // cleanup
-    glDeleteProgram(shader_program);
-    destroy_window(&global_window);
     
     ExitProcess(msg.message);
 }

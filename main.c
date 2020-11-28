@@ -38,9 +38,20 @@ static LRESULT CALLBACK WinProc(HWND window_handle, UINT message, WPARAM wParam,
 {
     switch (message)
     {
+        case WM_SYSCHAR:
+        {
+            // check for alt-f4
+            // if the 29-th bit is set the alt key is down
+            if (((lParam >> 29) & 0x1) != 0 &&
+                wParam == VK_F4)
+            {
+                ExitProcess(0);
+            }
+            
+            /* fall through */
+        }
         case WM_SYSKEYDOWN:
         case WM_SYSKEYUP:
-        case WM_SYSCHAR:
         {
             return 1;
         }
@@ -379,13 +390,10 @@ int main(void)
             
             if (GetAsyncKeyState(VK_DOWN))
             {
-                global_window.max_iterations -= 1;
-            }
-            
-            if (GetAsyncKeyState(VK_MENU) &&
-                GetAsyncKeyState(VK_F4))
-            {
-                break;
+                if(global_window.max_iterations > 2)
+                {
+                    global_window.max_iterations -= 1;
+                }
             }
         }
     }

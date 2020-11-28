@@ -96,38 +96,7 @@ static HGLRC create_opengl_context(HDC const device_context)
     // create an opengl 3.3 context
     HGLRC const result = wglCreateContext(device_context);
     
-    // make the temporary opengl context current and active
-    wglMakeCurrent(device_context, temporary_opengl_context);
-    
-    int attributes[] = {
-        WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
-        WGL_CONTEXT_MINOR_VERSION_ARB, 3,
-        
-        // set our OpenGL context to be forward compatible
-        WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB,
-        0
-    };
-    
-    PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB = 
-        (PFNWGLCREATECONTEXTATTRIBSARBPROC)
-        wglGetProcAddress("wglCreateContextAttribsARB");
-    
-    if (wglCreateContextAttribsARB == NULL)
-    {
-        MessageBoxW(NULL, L"opengl 3.x and above not supported", L"Error", MB_OK);
-        ExitProcess(GetLastError());
-    }
-    
-    // deactivate the temporary context
-    wglMakeCurrent(NULL, NULL);
-    
-    // delete the temporary context
-    wglDeleteContext(temporary_opengl_context);
-    
-    // Create an opengl 3.x context based on the given attributes 
-    HGLRC const result = wglCreateContextAttribsARB(device_context, NULL, attributes);
-    
-    // make our new opengl context the current and active one
+    // make the new opengl context current and active
     wglMakeCurrent(device_context, result);
     
     PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)

@@ -30,15 +30,34 @@ typedef struct Window
     int32_t max_iterations;
 } Window;
 
+typedef enum Keys
+{
+    KEY_W,
+    KEY_S,
+    KEY_A,
+    KEY_D,
+    KEY_PLUS1,
+    KEY_PLUS2,
+    KEY_MINUS1,
+    KEY_MINUS2,
+    KEY_UP,
+    KEY_DOWN,
+    KEY_R,
+    KEY_CTRL,
+    KEY_LENGTH // needed to keep track of number of keys
+} Keys;
+
+
 // NOTE: we could use GetWindowLongPtr and SetWindowLongPtr
 // however this is alot easier
 static Window global_window;
+static bool keys[KEY_LENGTH];
 
 static LRESULT CALLBACK WinProc(HWND window_handle, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
-        case WM_SYSCHAR:
+        case WM_SYSKEYDOWN:
         {
             // check for alt-f4
             // if the 29-th bit is set the alt key is down
@@ -50,7 +69,7 @@ static LRESULT CALLBACK WinProc(HWND window_handle, UINT message, WPARAM wParam,
             
             /* fall through */
         }
-        case WM_SYSKEYDOWN:
+        case WM_SYSCHAR:
         case WM_SYSKEYUP:
         {
             return 1;
@@ -70,6 +89,113 @@ static LRESULT CALLBACK WinProc(HWND window_handle, UINT message, WPARAM wParam,
         case WM_DESTROY:
         {
             PostQuitMessage(0);
+        } break;
+        
+        case WM_KEYUP:
+        case WM_KEYDOWN:
+        {
+            bool const key_down = (lParam >> 31) != 0;
+            bool should_flip = ((lParam >> 30) & 0x1) != (lParam >> 31);
+            should_flip = key_down ? should_flip : !should_flip;
+            
+            switch (wParam)
+            {
+                case 'W':
+                {
+                    if (should_flip)
+                    {
+                        keys[KEY_W] = !keys[KEY_W];
+                    }
+                } break;
+                
+                case 'S':
+                {
+                    if (should_flip)
+                    {
+                        keys[KEY_S] = !keys[KEY_S];
+                    }
+                } break;
+                
+                case 'A':
+                {
+                    if (should_flip)
+                    {
+                        keys[KEY_A] = !keys[KEY_A];
+                    }
+                } break;
+                
+                case 'D':
+                {
+                    if (should_flip)
+                    {
+                        keys[KEY_D] = !keys[KEY_D];
+                    }
+                } break;
+                
+                case 'R':
+                {
+                    if (should_flip)
+                    {
+                        keys[KEY_R] = !keys[KEY_R];
+                    }
+                } break;
+                
+                case VK_CONTROL:
+                {
+                    if (should_flip)
+                    {
+                        keys[KEY_CTRL] = !keys[KEY_CTRL];
+                    }
+                } break;
+                
+                case VK_OEM_PLUS:
+                {
+                    if (should_flip)
+                    {
+                        keys[KEY_PLUS1] = !keys[KEY_PLUS1];
+                    }
+                } break;
+                
+                case VK_ADD:
+                {
+                    if (should_flip)
+                    {
+                        keys[KEY_PLUS2] = !keys[KEY_PLUS2];
+                    }
+                } break;
+                
+                case VK_OEM_MINUS:
+                {
+                    if (should_flip)
+                    {
+                        keys[KEY_MINUS1] = !keys[KEY_MINUS1];
+                    }
+                } break;
+                
+                case VK_SUBTRACT:
+                {
+                    if (should_flip)
+                    {
+                        keys[KEY_MINUS2] = !keys[KEY_MINUS2];
+                    }
+                } break;
+                
+                case VK_UP:
+                {
+                    if (should_flip)
+                    {
+                        keys[KEY_UP] = !keys[KEY_UP];
+                    }
+                } break;
+                
+                case VK_DOWN:
+                {
+                    if (should_flip)
+                    {
+                        keys[KEY_DOWN] = !keys[KEY_DOWN];
+                    }
+                } break;
+            }
         } break;
         
         default:
@@ -233,7 +359,7 @@ static float lerp(float v0, float v1, float t)
 
 #define SHADER_CODE(...) #__VA_ARGS__
 
-int main(void)
+int __cdecl main(void)
 {
     create_window(L"mandelbrot", 800, 600);
     
@@ -243,17 +369,17 @@ int main(void)
         SHADER_CODE(out vec2 uv;
                     void main(void) 
                     {
-                        const vec2 positions[4] = vec2[](vec2(-1, -1),
-                                                         vec2(+1, -1),
-                                                         vec2(-1, +1),
-                                                         vec2(+1, +1));
-                        const vec2 coords[4] = vec2[](vec2(0, 0),
-                                                      vec2(1, 0),
-                                                      vec2(0, 1),
-                                                      vec2(1, 1));
+                        const vec2 p[4] = vec2[](vec2(-1, -1),
+                                                 vec2(+1, -1),
+                                                 vec2(-1, +1),
+                                                 vec2(+1, +1));
+                        const vec2 c[4] = vec2[](vec2(0, 0),
+                                                 vec2(1, 0),
+                                                 vec2(0, 1),
+                                                 vec2(1, 1));
                         
-                        uv = coords[gl_VertexID];
-                        gl_Position = vec4(positions[gl_VertexID], 0.0, 1.0);
+                        uv = c[gl_VertexID];
+                        gl_Position = vec4(p[gl_VertexID], 0.0, 1.0);
                     });
     
     char const *fragment_shader =
@@ -341,54 +467,50 @@ int main(void)
         // handle input
         {
             // some keyboards have two plus keys(number row and numpad)
-            if (GetAsyncKeyState(VK_OEM_PLUS) ||
-                GetAsyncKeyState(VK_ADD))
+            if (keys[KEY_PLUS1] || keys[KEY_PLUS2])
             {
-                global_window.scale *= 1.0f - 0.00075f;
+                global_window.scale *= 1.0f - 0.001f;
             }
             
             // see the above comment
-            if(GetAsyncKeyState(VK_OEM_MINUS) ||
-               GetAsyncKeyState(VK_SUBTRACT))
+            if(keys[KEY_MINUS1] || keys[KEY_MINUS2])
             {
-                global_window.scale *= 1.0f + 0.00075f;
+                global_window.scale *= 1.0f + 0.001f;
             }
             
-            if (GetAsyncKeyState('W'))
+            if (keys[KEY_W])
             {
-                global_window.pos[1] -= global_window.scale * 0.00075f; 
+                global_window.pos[1] -= global_window.scale * 0.001f; 
             }
             
-            if (GetAsyncKeyState('S'))
+            if (keys[KEY_S])
             {
-                global_window.pos[1] += global_window.scale * 0.00075f; 
+                global_window.pos[1] += global_window.scale * 0.001f; 
+            }
+            if (keys[KEY_A])
+            {
+                global_window.pos[0] += global_window.scale * 0.001f; 
             }
             
-            if (GetAsyncKeyState('A'))
+            if  (keys[KEY_D])
             {
-                global_window.pos[0] += global_window.scale * 0.00075f; 
-            }
-            
-            if  (GetAsyncKeyState('D'))
-            {
-                global_window.pos[0] -= global_window.scale * 0.00075f; 
+                global_window.pos[0] -= global_window.scale * 0.001f; 
             }
             
             // if ctrl-r is pressed reset the scale and pos
-            if (GetAsyncKeyState(VK_CONTROL) &&
-                GetAsyncKeyState('R'))
+            if (keys[KEY_CTRL] && keys[KEY_R])
             {
                 global_window.pos[0] = 0.0f;
                 global_window.pos[1] = 0.0f;
                 global_window.scale = 1.0f;
             }
             
-            if (GetAsyncKeyState(VK_UP))
+            if (keys[KEY_UP])
             {
                 global_window.max_iterations += 1;
             }
             
-            if (GetAsyncKeyState(VK_DOWN))
+            if (keys[KEY_DOWN])
             {
                 if(global_window.max_iterations > 2)
                 {

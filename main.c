@@ -25,8 +25,8 @@ typedef struct Window
     HDC device_context;
     HGLRC opengl_context;
     int32_t width, height;
-    float scale, smooth_scale;
-    float pos[2], smooth_pos[2];
+    float scale, pos[2];
+    float smooth_scale, smooth_pos[2];
     int32_t max_iterations;
 } Window;
 
@@ -49,7 +49,7 @@ typedef enum Keys
 
 
 // NOTE: we could use GetWindowLongPtr and SetWindowLongPtr
-// however this is alot easier
+// however this is much more easier
 static Window global_window;
 static bool keys[KEY_LENGTH];
 
@@ -67,7 +67,6 @@ static LRESULT CALLBACK WinProc(HWND window_handle, UINT message, WPARAM wParam,
                 ExitProcess(0);
             }
             
-            /* fall through */
         }
         case WM_SYSCHAR:
         case WM_SYSKEYUP:
@@ -88,113 +87,78 @@ static LRESULT CALLBACK WinProc(HWND window_handle, UINT message, WPARAM wParam,
         case WM_CLOSE:
         case WM_DESTROY:
         {
-            PostQuitMessage(0);
-        } break;
+            ExitProcess(0);
+        }
         
         case WM_KEYUP:
         case WM_KEYDOWN:
         {
-            bool const key_down = (lParam >> 31) != 0;
-            bool should_flip = ((lParam >> 30) & 0x1) != (lParam >> 31);
-            should_flip = key_down ? should_flip : !should_flip;
+            bool const should_flip = ((lParam >> 30) & 0x1) == ((lParam >> 31) & 0x1);
             
-            switch (wParam)
+            if (should_flip)
             {
-                case 'W':
+                switch (wParam)
                 {
-                    if (should_flip)
+                    case 'W':
                     {
                         keys[KEY_W] = !keys[KEY_W];
-                    }
-                } break;
-                
-                case 'S':
-                {
-                    if (should_flip)
+                    } break;
+                    
+                    case 'S':
                     {
                         keys[KEY_S] = !keys[KEY_S];
-                    }
-                } break;
-                
-                case 'A':
-                {
-                    if (should_flip)
+                    } break;
+                    
+                    case 'A':
                     {
                         keys[KEY_A] = !keys[KEY_A];
-                    }
-                } break;
-                
-                case 'D':
-                {
-                    if (should_flip)
+                    } break;
+                    
+                    case 'D':
                     {
                         keys[KEY_D] = !keys[KEY_D];
-                    }
-                } break;
-                
-                case 'R':
-                {
-                    if (should_flip)
+                    } break;
+                    
+                    case 'R':
                     {
                         keys[KEY_R] = !keys[KEY_R];
-                    }
-                } break;
-                
-                case VK_CONTROL:
-                {
-                    if (should_flip)
+                    } break;
+                    
+                    case VK_CONTROL:
                     {
                         keys[KEY_CTRL] = !keys[KEY_CTRL];
-                    }
-                } break;
-                
-                case VK_OEM_PLUS:
-                {
-                    if (should_flip)
+                    } break;
+                    
+                    case VK_OEM_PLUS:
                     {
                         keys[KEY_PLUS1] = !keys[KEY_PLUS1];
-                    }
-                } break;
-                
-                case VK_ADD:
-                {
-                    if (should_flip)
+                    } break;
+                    
+                    case VK_ADD:
                     {
                         keys[KEY_PLUS2] = !keys[KEY_PLUS2];
-                    }
-                } break;
-                
-                case VK_OEM_MINUS:
-                {
-                    if (should_flip)
+                    } break;
+                    
+                    case VK_OEM_MINUS:
                     {
                         keys[KEY_MINUS1] = !keys[KEY_MINUS1];
-                    }
-                } break;
-                
-                case VK_SUBTRACT:
-                {
-                    if (should_flip)
+                    } break;
+                    
+                    case VK_SUBTRACT:
                     {
                         keys[KEY_MINUS2] = !keys[KEY_MINUS2];
-                    }
-                } break;
-                
-                case VK_UP:
-                {
-                    if (should_flip)
+                    } break;
+                    
+                    case VK_UP:
                     {
                         keys[KEY_UP] = !keys[KEY_UP];
-                    }
-                } break;
-                
-                case VK_DOWN:
-                {
-                    if (should_flip)
+                    } break;
+                    
+                    case VK_DOWN:
                     {
                         keys[KEY_DOWN] = !keys[KEY_DOWN];
-                    }
-                } break;
+                    } break;
+                }
             }
         } break;
         
@@ -209,7 +173,7 @@ static LRESULT CALLBACK WinProc(HWND window_handle, UINT message, WPARAM wParam,
 
 static HGLRC create_opengl_context(HDC const device_context)
 {
-    PIXELFORMATDESCRIPTOR const pfd = {
+    static PIXELFORMATDESCRIPTOR const pfd = {
         .nSize = sizeof(pfd), 
         .dwFlags = PFD_DOUBLEBUFFER | PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW,
         .iPixelType = PFD_TYPE_RGBA,
@@ -218,18 +182,9 @@ static HGLRC create_opengl_context(HDC const device_context)
         .iLayerType = PFD_MAIN_PLANE
     };
     
-    int pixel_format_index = ChoosePixelFormat(device_context, &pfd);
+    int const pixel_format_index = ChoosePixelFormat(device_context, &pfd);
     
-    // ChoosePixelFormat returns zero on error
-    if (pixel_format_index == 0)
-    {
-        ExitProcess(GetLastError());
-    }
-    
-    if (SetPixelFormat(device_context, pixel_format_index, &pfd) == FALSE)
-    {
-        ExitProcess(GetLastError());
-    }
+    SetPixelFormat(device_context, pixel_format_index, &pfd);
     
     // create an opengl 3.3 context
     HGLRC const result = wglCreateContext(device_context);
@@ -246,24 +201,19 @@ static HGLRC create_opengl_context(HDC const device_context)
 
 static void create_window(wchar_t const *title, int32_t width, int32_t height)
 {
-    HANDLE hInstance = GetModuleHandleW(NULL);
+    HANDLE const hInstance = GetModuleHandleW(NULL);
     
     // create a window class
-    WNDCLASSEXW wndclassex = {
+    WNDCLASSEXW const wndclassex = {
         .cbSize = sizeof(wndclassex),
         .style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
         .lpfnWndProc = &WinProc,
         .hInstance = hInstance,
-        .hIcon = LoadIconW(hInstance, IDI_APPLICATION),
         .hCursor = LoadCursorW(NULL, IDC_ARROW),
-        .lpszClassName = L"a",
-        .hIconSm = LoadIconW(hInstance, IDI_APPLICATION)
+        .lpszClassName = L"0",
     };
     
-    if (RegisterClassExW(&wndclassex) == 0)
-    {
-        ExitProcess(GetLastError());
-    }
+    RegisterClassExW(&wndclassex);
     
     // create a window
     HWND const window_handle = CreateWindowW( 
@@ -274,17 +224,8 @@ static void create_window(wchar_t const *title, int32_t width, int32_t height)
                                              width, height, NULL, NULL,
                                              hInstance, NULL);
     
-    if (window_handle == NULL)
-    {
-        ExitProcess(GetLastError());
-    }
-    
     // create a device context
     HDC const device_context = GetDC(window_handle);
-    if (device_context == NULL)
-    {
-        ExitProcess(GetLastError());
-    }
     
     // create an opengl context
     HGLRC const opengl_context = create_opengl_context(device_context);
@@ -303,12 +244,11 @@ static void create_window(wchar_t const *title, int32_t width, int32_t height)
         .max_iterations = 200,
     };
     
-    // show and update window
+    // show the window
     ShowWindow(window_handle, SW_SHOWDEFAULT);
-    UpdateWindow(window_handle);
 }
 
-static unsigned int compile_shaders(char const *vertex_shader_source,
+static unsigned int compile_shaders(char const * vertex_shader_source,
                                     char const *fragment_shader_source)
 {
     // compile vertex shader
@@ -345,10 +285,6 @@ static unsigned int compile_shaders(char const *vertex_shader_source,
     glAttachShader(shader_program, fragment_shader); 
     glLinkProgram(shader_program);
     
-    // delete shaders after we are done linking
-    glDeleteShader(vertex_shader);
-    glDeleteShader(fragment_shader);
-    
     return shader_program;
 }
 
@@ -364,55 +300,23 @@ int __cdecl main(void)
     create_window(L"mandelbrot", 800, 600);
     
     // if only c had raw string litreals
-    char const *vertex_shader =
+    static char const vertex_shader[] =
         "#version 330 core\n"
-        SHADER_CODE(out vec2 uv;
-                    void main(void) 
-                    {
-                        const vec2 p[4] = vec2[](vec2(-1, -1),
-                                                 vec2(+1, -1),
-                                                 vec2(-1, +1),
-                                                 vec2(+1, +1));
-                        const vec2 c[4] = vec2[](vec2(0, 0),
-                                                 vec2(1, 0),
-                                                 vec2(0, 1),
-                                                 vec2(1, 1));
-                        
-                        uv = c[gl_VertexID];
-                        gl_Position = vec4(p[gl_VertexID], 0.0, 1.0);
-                    });
+        SHADER_CODE(out vec2 u;void main(){u=vec2[](vec2(0),vec2(1,0),vec2(0,1),vec2(1))[gl_VertexID];
+                        gl_Position=vec4(vec2[](vec2(-1,-1),vec2(1,-1),vec2(-1,1),vec2(1))[gl_VertexID],0,1);});
     
-    char const *fragment_shader =
+    // by making this smaller we can save space at the cost of readabilty
+    static char const fragment_shader[] =
         "#version 330 core\n"
-        "#define BAILOUT 200000.0f\n"
-        SHADER_CODE(out vec4 fragcolor;
-                    in vec2 uv;
-                    uniform int max_iterations;
-                    uniform float aspect;
-                    uniform vec4 data;
-                    void main(void)
-                    {
-                        vec2 c = ((uv * 3.0 - 1.5) * data[1] - data.zw)  * vec2(aspect, 1);
-                        vec2 z = vec2(0);
-                        
-                        int i;
-                        for(i = 0; i < max_iterations && dot(z, z) < BAILOUT; ++i)
-                            z = vec2(z.x * z.x - z.y * z.y, z.x * z.y * 2.0) + c;
-                        
-                        float s = sqrt((i - log2(log(dot(z, z)) / log(BAILOUT))) / float(max_iterations));
-                        vec3 cs = (sin(data[0] + 20.0 * s * vec3(1.5, 1.8, 2.1)) * 0.5 + 0.5) 
-                            * float(i != max_iterations);
-                        fragcolor = vec4(cs, 1);
-                    });
+        "#define B 200000.0\n"
+        SHADER_CODE(out vec4 F;in vec2 u;uniform int I;uniform float A;uniform vec4 D;
+                    void main(){vec2 c=((u*3-1.5)*D.y-D.zw)*vec2(A,1);vec2 z=vec2(0);int i;
+                        for(i=0;i<I&&dot(z,z)<B;++i)z=vec2(z.x*z.x-z.y*z.y,z.x*z.y*2)+c;
+                        float s=sqrt((i-log2(log(dot(z,z))/log(B)))/float(I));
+                        vec3 o=(sin(D.x+20*s*vec3(1.5,1.8,2.1))*0.5+0.5)*float(i!=I);F=vec4(o,1);});
     
-    unsigned int shader_program = compile_shaders(vertex_shader, 
-                                                  fragment_shader);
-    // generate a vao
-    unsigned int vao;
-    glGenVertexArrays(1, &vao);
-    
-    // bind the vao
-    glBindVertexArray(vao);
+    unsigned int const shader_program = compile_shaders(vertex_shader, 
+                                                        fragment_shader);
     
     float color_offset = 0.0f;
     
@@ -424,8 +328,6 @@ int __cdecl main(void)
         {
             TranslateMessage(&msg);
             DispatchMessageW(&msg);
-            
-            if (msg.message ==  WM_QUIT) break;
         }
         
         else
@@ -435,16 +337,15 @@ int __cdecl main(void)
             glUseProgram(shader_program);
             
             // pass uniforms
-            glUniform1f(glGetUniformLocation(shader_program, "aspect"),
+            glUniform1f(glGetUniformLocation(shader_program, "A"),
                         (float)global_window.width /
                         (float)global_window.height);
-            glUniform4f(glGetUniformLocation(shader_program, "data"), color_offset, global_window.smooth_scale, 
+            glUniform4f(glGetUniformLocation(shader_program, "D"), color_offset, global_window.smooth_scale, 
                         global_window.smooth_pos[0], global_window.smooth_pos[1]);
-            glUniform1i(glGetUniformLocation(shader_program, "max_iterations"),
+            glUniform1i(glGetUniformLocation(shader_program, "I"),
                         global_window.max_iterations);
             
             // draw a quad
-            glBindVertexArray(vao);
             glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
             
             // finally draw to the screen
@@ -453,12 +354,12 @@ int __cdecl main(void)
             // the smooth values will smoothly converge to the real values
             {
                 global_window.smooth_pos[0] = lerp(global_window.smooth_pos[0], 
-                                                   global_window.pos[0], 0.005f);
+                                                   global_window.pos[0], 0.003f);
                 global_window.smooth_pos[1] = lerp(global_window.smooth_pos[1], 
-                                                   global_window.pos[1], 0.005f);
+                                                   global_window.pos[1], 0.003f);
                 
                 global_window.smooth_scale = lerp(global_window.smooth_scale,
-                                                  global_window.scale, 0.005f);
+                                                  global_window.scale, 0.003f);
             }
             
             color_offset += 0.001f;
@@ -519,6 +420,4 @@ int __cdecl main(void)
             }
         }
     }
-    
-    ExitProcess(msg.message);
 }

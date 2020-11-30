@@ -8,7 +8,6 @@ static PFNGLCREATEPROGRAMPROC glCreateProgram;
 static PFNGLUSEPROGRAMPROC glUseProgram;
 static PFNGLATTACHSHADERPROC glAttachShader;
 static PFNGLLINKPROGRAMPROC glLinkProgram;
-static PFNGLGETSHADERINFOLOGPROC glGetShaderInfoLog;
 static PFNGLGETUNIFORMLOCATIONPROC glGetUniformLocation;
 static PFNGLUNIFORM1IPROC glUniform1i;
 static PFNGLUNIFORM1FPROC glUniform1f;
@@ -18,7 +17,10 @@ static PFNGLUNIFORM4FPROC glUniform4f;
 static PFNGLCREATESHADERPROC glCreateShader;
 static PFNGLSHADERSOURCEPROC glShaderSource;
 static PFNGLCOMPILESHADERPROC glCompileShader;
+
+// for debuging
 static PFNGLGETSHADERIVPROC glGetShaderiv;
+static PFNGLGETSHADERINFOLOGPROC glGetShaderInfoLog;
 
 // we need to load opengl extensions from opengl32.dll
 static void load_extensions(void)
@@ -38,7 +40,7 @@ static void load_extensions(void)
     glShaderSource = (PFNGLSHADERSOURCEPROC)wglGetProcAddress("glShaderSource");
     glCompileShader = (PFNGLCOMPILESHADERPROC)wglGetProcAddress("glCompileShader");
     
-#if 0
+#if DEBUG_MODE
     glGetShaderInfoLog = (PFNGLGETSHADERINFOLOGPROC)wglGetProcAddress("glGetShaderInfoLog");
     glGetShaderiv = (PFNGLGETSHADERIVPROC)wglGetProcAddress("glGetShaderiv");
 #endif

@@ -5,6 +5,7 @@
 // windows headers
 #define UNICODE
 #define WIN32_LEAN_AND_MEAN
+#define WIN32_EXTRA_LEAN
 #include <Windows.h>
 
 // opengl headers
@@ -58,16 +59,6 @@ static LRESULT CALLBACK WinProc(HWND window_handle, UINT message, WPARAM wParam,
     switch (message)
     {
         case WM_SYSKEYDOWN:
-        {
-            // check for alt-f4
-            // if the 29-th bit is set the alt key is down
-            if (((lParam >> 29) & 0x1) != 0 &&
-                wParam == VK_F4)
-            {
-                ExitProcess(0);
-            }
-            
-        }
         case WM_SYSCHAR:
         case WM_SYSKEYUP:
         {
@@ -159,6 +150,8 @@ static LRESULT CALLBACK WinProc(HWND window_handle, UINT message, WPARAM wParam,
                         keys[KEY_DOWN] = !keys[KEY_DOWN];
                     } break;
                 }
+                
+                if (wParam == VK_ESCAPE) ExitProcess(0);
             }
         } break;
         
@@ -216,8 +209,7 @@ static void create_window(wchar_t const *title, int32_t width, int32_t height)
     RegisterClassExW(&wndclassex);
     
     // create a window
-    HWND const window_handle = CreateWindowW( 
-                                             wndclassex.lpszClassName,
+    HWND const window_handle = CreateWindowW(wndclassex.lpszClassName,
                                              title, 
                                              WS_OVERLAPPEDWINDOW,
                                              CW_USEDEFAULT, CW_USEDEFAULT,
@@ -262,7 +254,7 @@ static unsigned int compile_shaders(char const * vertex_shader_source,
     glCompileShader(fragment_shader);
     
     // only needed for debugging
-#if 0
+#if DEBUG_MODE
     {
         int success;
         char info_log[512];
@@ -300,20 +292,20 @@ int __cdecl main(void)
     create_window(L"mandelbrot", 800, 600);
     
     // if only c had raw string litreals
-    static char const vertex_shader[] =
-        "#version 330 core\n"
+    static char const * const vertex_shader =
+        "#version 330\n"
         SHADER_CODE(out vec2 u;void main(){u=vec2[](vec2(0),vec2(1,0),vec2(0,1),vec2(1))[gl_VertexID];
                         gl_Position=vec4(vec2[](vec2(-1,-1),vec2(1,-1),vec2(-1,1),vec2(1))[gl_VertexID],0,1);});
     
     // by making this smaller we can save space at the cost of readabilty
-    static char const fragment_shader[] =
-        "#version 330 core\n"
+    static char const * const fragment_shader =
+        "#version 330\n"
         "#define B 200000.0\n"
         SHADER_CODE(out vec4 F;in vec2 u;uniform int I;uniform float A;uniform vec4 D;
                     void main(){vec2 c=((u*3-1.5)*D.y-D.zw)*vec2(A,1);vec2 z=vec2(0);int i;
                         for(i=0;i<I&&dot(z,z)<B;++i)z=vec2(z.x*z.x-z.y*z.y,z.x*z.y*2)+c;
                         float s=sqrt((i-log2(log(dot(z,z))/log(B)))/float(I));
-                        vec3 o=(sin(D.x+20*s*vec3(1.5,1.8,2.1))*0.5+0.5)*float(i!=I);F=vec4(o,1);});
+                        F=(sin(D.x+20*s*vec4(1.5,1.8,2.1,0))*0.5+0.5)*float(i!=I);});
     
     unsigned int const shader_program = compile_shaders(vertex_shader, 
                                                         fragment_shader);
@@ -411,12 +403,10 @@ int __cdecl main(void)
                 global_window.max_iterations += 1;
             }
             
-            if (keys[KEY_DOWN])
+            if (keys[KEY_DOWN] && 
+                global_window.max_iterations > 2)
             {
-                if(global_window.max_iterations > 2)
-                {
-                    global_window.max_iterations -= 1;
-                }
+                global_window.max_iterations -= 1;
             }
         }
     }

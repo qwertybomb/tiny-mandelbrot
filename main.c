@@ -302,7 +302,7 @@ int __cdecl main(void)
         "#version 330\n"
         "#define B 200000.0\n"
         SHADER_CODE(out vec4 F;in vec2 u;uniform int I;uniform float A;uniform vec4 D;
-                    void main(){vec2 c=((u*3-1.5)*D.y-D.zw)*vec2(A,1);vec2 z=vec2(0);int i;
+                    void main(){vec2 c=((u*2-1)*vec2(A,1)*D.y-D.zw);vec2 z=vec2(0);int i;
                         for(i=0;i<I&&dot(z,z)<B;++i)z=vec2(z.x*z.x-z.y*z.y,z.x*z.y*2)+c;
                         float s=sqrt((i-log2(log(dot(z,z))/log(B)))/float(I));
                         F=(sin(D.x+20*s*vec4(1.5,1.8,2.1,0))*0.5+0.5)*float(i!=I);});
@@ -346,12 +346,12 @@ int __cdecl main(void)
             // the smooth values will smoothly converge to the real values
             {
                 global_window.smooth_pos[0] = lerp(global_window.smooth_pos[0], 
-                                                   global_window.pos[0], 0.003f);
+                                                   global_window.pos[0], 0.005f);
                 global_window.smooth_pos[1] = lerp(global_window.smooth_pos[1], 
-                                                   global_window.pos[1], 0.003f);
+                                                   global_window.pos[1], 0.005f);
                 
                 global_window.smooth_scale = lerp(global_window.smooth_scale,
-                                                  global_window.scale, 0.003f);
+                                                  global_window.scale, 0.005f);
             }
             
             color_offset += 0.001f;
@@ -362,32 +362,32 @@ int __cdecl main(void)
             // some keyboards have two plus keys(number row and numpad)
             if (keys[KEY_PLUS1] || keys[KEY_PLUS2])
             {
-                global_window.scale *= 1.0f - 0.001f;
+                global_window.scale *= 1.0f - 0.003f;
             }
             
             // see the above comment
             if(keys[KEY_MINUS1] || keys[KEY_MINUS2])
             {
-                global_window.scale *= 1.0f + 0.001f;
+                global_window.scale *= 1.0f + 0.003f;
             }
             
             if (keys[KEY_W])
             {
-                global_window.pos[1] -= global_window.scale * 0.001f; 
+                global_window.pos[1] -= global_window.scale * 0.003f; 
             }
             
             if (keys[KEY_S])
             {
-                global_window.pos[1] += global_window.scale * 0.001f; 
+                global_window.pos[1] += global_window.scale * 0.003f; 
             }
             if (keys[KEY_A])
             {
-                global_window.pos[0] += global_window.scale * 0.001f; 
+                global_window.pos[0] += global_window.scale * 0.003f; 
             }
             
             if  (keys[KEY_D])
             {
-                global_window.pos[0] -= global_window.scale * 0.001f; 
+                global_window.pos[0] -= global_window.scale * 0.003f; 
             }
             
             // if ctrl-r is pressed reset the scale and pos

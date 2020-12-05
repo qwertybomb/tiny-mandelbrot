@@ -20,9 +20,7 @@ int _fltused;
 
 typedef struct Window
 {
-    HWND handle;
     HDC device_context;
-    HGLRC opengl_context;
     float aspect_ratio;
     float scale, pos[2];
     float smooth_scale, smooth_pos[2];
@@ -60,14 +58,13 @@ static LRESULT CALLBACK WinProc(HWND window_handle, UINT message, WPARAM wParam,
         case WM_SYSCHAR:
         case WM_SYSKEYUP:
         {
-            return 1;
-        }
+        } break;
         
         case WM_SIZE:
         {
             // the width and height are stored in the low and high word of lParam respectively
-            LPARAM width = lParam & 0xFFFF;
-            LPARAM height = (lParam >> 16) & 0xFFFF;
+            LPARAM const width = lParam & 0xFFFF;
+            LPARAM const height = (lParam >> 16) & 0xFFFF;
             
             // store the aspect ratio
             global_window.aspect_ratio = (float)width / (float)height;
@@ -166,76 +163,57 @@ static LRESULT CALLBACK WinProc(HWND window_handle, UINT message, WPARAM wParam,
     return 0;
 }
 
-static HGLRC create_opengl_context(HDC const device_context)
+static void create_opengl_context(HDC const device_context)
 {
-    static PIXELFORMATDESCRIPTOR const pfd = {
-        .nSize = sizeof(pfd), 
-        .dwFlags = PFD_DOUBLEBUFFER | PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW,
-        .iPixelType = PFD_TYPE_RGBA,
-        .cColorBits = 32,
-        .cDepthBits = 32,
-        .iLayerType = PFD_MAIN_PLANE
-    };
-    
-    int const pixel_format_index = ChoosePixelFormat(device_context, &pfd);
-    
-    SetPixelFormat(device_context, pixel_format_index, &pfd);
+    SetPixelFormat(device_context, 9, NULL);
     
     // create an opengl 3.3 context
-    HGLRC const result = wglCreateContext(device_context);
+    HGLRC const opengl_context = wglCreateContext(device_context);
     
     // make the new opengl context current and active
-    wglMakeCurrent(device_context, result);
+    wglMakeCurrent(device_context, opengl_context);
     
     PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)
         wglGetProcAddress("wglSwapIntervalEXT");
     wglSwapIntervalEXT(0);
-    
-    return result;
 }
 
-static void create_window(char const *title, int32_t width, int32_t height)
+static void create_window(int32_t width, int32_t height)
 {
-    HANDLE const hInstance = GetModuleHandleA(NULL);
-    
     // create a window class
-    WNDCLASSEXA const wndclassex = {
-        .cbSize = sizeof(wndclassex),
+    static WNDCLASSA const wndclass = {
         .style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
         .lpfnWndProc = &WinProc,
-        .hInstance = hInstance,
-        .hCursor = LoadCursorA(NULL, IDC_ARROW),
         .lpszClassName = "0",
     };
     
-    RegisterClassExA(&wndclassex);
+    RegisterClassA(&wndclass);
     
     // create a window
-    HWND const window_handle = CreateWindowA(wndclassex.lpszClassName,
-                                             title, 
+    HWND const window_handle = CreateWindowA(wndclass.lpszClassName,
+                                             "", 
                                              WS_OVERLAPPEDWINDOW,
                                              CW_USEDEFAULT, CW_USEDEFAULT,
                                              width, height, NULL, NULL,
-                                             hInstance, NULL);
+                                             NULL, NULL);
     
     // create a device context
     HDC const device_context = GetDC(window_handle);
     
     // create an opengl context
-    HGLRC const opengl_context = create_opengl_context(device_context);
+    create_opengl_context(device_context);
     
     // load opengl extensions after creating an opengl context
     load_extensions();
     
-    global_window = (Window) {
-        .handle = window_handle,
-        .device_context = device_context,
-        .opengl_context = opengl_context,
-        .aspect_ratio = (float)width / (float)height,
-        .scale = 1.0f,
-        .smooth_scale = 0.5f,
-        .max_iterations = 200,
-    };
+    // setup global window
+    {
+        global_window.device_context = device_context;
+        global_window.aspect_ratio = (float)width / (float)height;
+        global_window.scale = 1.0f;
+        global_window.smooth_scale = 0.5f;
+        global_window.max_iterations = 200;
+    }
     
     // show the window
     ShowWindow(window_handle, SW_SHOWDEFAULT);
@@ -286,11 +264,9 @@ static float lerp(float v0, float v1, float t)
     return (1.0f - t) * v0 + t * v1;
 }
 
-// NOTE: this is the entry point
-// when compiling use /ENTRY:entry
-int __stdcall entry(void)
+__declspec(noreturn) void __stdcall entry(void)
 {
-    create_window("mandelbrot", 800, 600);
+    create_window(800, 600);
     
     // by making this smaller we can save space at the cost of readabilty
 #define VERTEX_SHADER                                                                         \
@@ -310,8 +286,8 @@ int __stdcall entry(void)
     unsigned int const shader_program = compile_shaders(VERTEX_SHADER, 
                                                         FRAGMENT_SHADER);
     
+    glUseProgram(shader_program);
     float color_offset = 0.0f;
-    
     MSG msg;
     for(;;)
     {
@@ -324,10 +300,6 @@ int __stdcall entry(void)
         
         else
         {
-            
-            // use the shader
-            glUseProgram(shader_program);
-            
             // pass uniforms
             glUniform1f(glGetUniformLocation(shader_program, "A"),
                         global_window.aspect_ratio);

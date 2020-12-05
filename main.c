@@ -8,11 +8,10 @@
 #include <Windows.h>
 
 // opengl headers
-#include <gl/GL.h>
-#include <GL/glext.h>
-
 #define WGL_WGLEXT_PROTOTYPES
-#include <GL/wglext.h>
+#include <gl/GL.h>
+#include "glext.h"
+#include "wglext.h"
 #include "opengl.h"
 
 // needed when we use floats
@@ -155,6 +154,7 @@ static LRESULT CALLBACK WinProc(HWND window_handle, UINT message, WPARAM wParam,
                 
                 if (wParam == VK_ESCAPE) ExitProcess(0);
             }
+            
         } break;
         
         default:
@@ -208,15 +208,15 @@ static void create_window(char const *title, int32_t width, int32_t height)
         .lpszClassName = "0",
     };
     
-    RegisterClassEx(&wndclassex);
+    RegisterClassExA(&wndclassex);
     
     // create a window
-    HWND const window_handle = CreateWindow(wndclassex.lpszClassName,
-                                            title, 
-                                            WS_OVERLAPPEDWINDOW,
-                                            CW_USEDEFAULT, CW_USEDEFAULT,
-                                            width, height, NULL, NULL,
-                                            hInstance, NULL);
+    HWND const window_handle = CreateWindowA(wndclassex.lpszClassName,
+                                             title, 
+                                             WS_OVERLAPPEDWINDOW,
+                                             CW_USEDEFAULT, CW_USEDEFAULT,
+                                             width, height, NULL, NULL,
+                                             hInstance, NULL);
     
     // create a device context
     HDC const device_context = GetDC(window_handle);

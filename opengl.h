@@ -40,7 +40,7 @@ static void load_extensions(void)
     glShaderSource = (PFNGLSHADERSOURCEPROC)wglGetProcAddress("glShaderSource");
     glCompileShader = (PFNGLCOMPILESHADERPROC)wglGetProcAddress("glCompileShader");
     
-#if DEBUG_MODE
+#ifdef DEBUG_MODE
     glGetShaderInfoLog = (PFNGLGETSHADERINFOLOGPROC)wglGetProcAddress("glGetShaderInfoLog");
     glGetShaderiv = (PFNGLGETSHADERIVPROC)wglGetProcAddress("glGetShaderiv");
 #endif

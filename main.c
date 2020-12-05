@@ -3,7 +3,6 @@
 #include <stdbool.h>
 
 // windows headers
-#define UNICODE
 #define WIN32_LEAN_AND_MEAN
 #define WIN32_EXTRA_LEAN
 #include <Windows.h>
@@ -25,7 +24,7 @@ typedef struct Window
     HWND handle;
     HDC device_context;
     HGLRC opengl_context;
-    int32_t width, height;
+    float aspect_ratio;
     float scale, pos[2];
     float smooth_scale, smooth_pos[2];
     int32_t max_iterations;
@@ -68,10 +67,13 @@ static LRESULT CALLBACK WinProc(HWND window_handle, UINT message, WPARAM wParam,
         case WM_SIZE:
         {
             // the width and height are stored in the low and high word of lParam respectively
-            global_window.width = lParam & 0xFFFF;
-            global_window.height = (lParam >> 16) & 0xFFFF;
+            LPARAM width = lParam & 0xFFFF;
+            LPARAM height = (lParam >> 16) & 0xFFFF;
             
-            glViewport(0, 0, global_window.width, global_window.height);
+            // store the aspect ratio
+            global_window.aspect_ratio = (float)width / (float)height;
+            
+            glViewport(0, 0, width, height);
         } break;
         
         case WM_QUIT:
@@ -157,7 +159,7 @@ static LRESULT CALLBACK WinProc(HWND window_handle, UINT message, WPARAM wParam,
         
         default:
         {
-            return DefWindowProcW(window_handle, message, wParam, lParam);
+            return DefWindowProc(window_handle, message, wParam, lParam);
         }
     }
     
@@ -192,29 +194,29 @@ static HGLRC create_opengl_context(HDC const device_context)
     return result;
 }
 
-static void create_window(wchar_t const *title, int32_t width, int32_t height)
+static void create_window(char const *title, int32_t width, int32_t height)
 {
-    HANDLE const hInstance = GetModuleHandleW(NULL);
+    HANDLE const hInstance = GetModuleHandleA(NULL);
     
     // create a window class
-    WNDCLASSEXW const wndclassex = {
+    WNDCLASSEXA const wndclassex = {
         .cbSize = sizeof(wndclassex),
         .style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
         .lpfnWndProc = &WinProc,
         .hInstance = hInstance,
-        .hCursor = LoadCursorW(NULL, IDC_ARROW),
-        .lpszClassName = L"0",
+        .hCursor = LoadCursorA(NULL, IDC_ARROW),
+        .lpszClassName = "0",
     };
     
-    RegisterClassExW(&wndclassex);
+    RegisterClassEx(&wndclassex);
     
     // create a window
-    HWND const window_handle = CreateWindowW(wndclassex.lpszClassName,
-                                             title, 
-                                             WS_OVERLAPPEDWINDOW,
-                                             CW_USEDEFAULT, CW_USEDEFAULT,
-                                             width, height, NULL, NULL,
-                                             hInstance, NULL);
+    HWND const window_handle = CreateWindow(wndclassex.lpszClassName,
+                                            title, 
+                                            WS_OVERLAPPEDWINDOW,
+                                            CW_USEDEFAULT, CW_USEDEFAULT,
+                                            width, height, NULL, NULL,
+                                            hInstance, NULL);
     
     // create a device context
     HDC const device_context = GetDC(window_handle);
@@ -229,8 +231,7 @@ static void create_window(wchar_t const *title, int32_t width, int32_t height)
         .handle = window_handle,
         .device_context = device_context,
         .opengl_context = opengl_context,
-        .width = width,
-        .height = height,
+        .aspect_ratio = (float)width / (float)height,
         .scale = 1.0f,
         .smooth_scale = 0.5f,
         .max_iterations = 200,
@@ -240,7 +241,7 @@ static void create_window(wchar_t const *title, int32_t width, int32_t height)
     ShowWindow(window_handle, SW_SHOWDEFAULT);
 }
 
-static unsigned int compile_shaders(char const * vertex_shader_source,
+static unsigned int compile_shaders(char const *vertex_shader_source,
                                     char const *fragment_shader_source)
 {
     // compile vertex shader
@@ -254,7 +255,7 @@ static unsigned int compile_shaders(char const * vertex_shader_source,
     glCompileShader(fragment_shader);
     
     // only needed for debugging
-#if DEBUG_MODE
+#ifdef DEBUG_MODE
     {
         int success;
         char info_log[512];
@@ -264,7 +265,7 @@ static unsigned int compile_shaders(char const * vertex_shader_source,
         {
             glGetShaderInfoLog(fragment_shader, sizeof(info_log), 
                                NULL, info_log);
-            WriteFile(GetStdHandle(STD_OUTPUT_HANDLE),
+            WriteFile((HANDLE)(STD_OUTPUT_HANDLE),
                       info_log, (DWORD)lstrlenA(info_log),
                       NULL, NULL);
         }
@@ -285,30 +286,29 @@ static float lerp(float v0, float v1, float t)
     return (1.0f - t) * v0 + t * v1;
 }
 
-#define SHADER_CODE(...) #__VA_ARGS__
-
-int __cdecl main(void)
+// NOTE: this is the entry point
+// when compiling use /ENTRY:entry
+int __stdcall entry(void)
 {
-    create_window(L"mandelbrot", 800, 600);
-    
-    // if only c had raw string litreals
-    static char const * const vertex_shader =
-        "#version 330\n"
-        SHADER_CODE(out vec2 u;void main(){u=vec2[](vec2(0),vec2(1,0),vec2(0,1),vec2(1))[gl_VertexID];
-                        gl_Position=vec4(vec2[](vec2(-1,-1),vec2(1,-1),vec2(-1,1),vec2(1))[gl_VertexID],0,1);});
+    create_window("mandelbrot", 800, 600);
     
     // by making this smaller we can save space at the cost of readabilty
-    static char const * const fragment_shader =
-        "#version 330\n"
-        "#define B 200000.0\n"
-        SHADER_CODE(out vec4 F;in vec2 u;uniform int I;uniform float A;uniform vec4 D;
-                    void main(){vec2 c=((u*2-1)*vec2(A,1)*D.y-D.zw);vec2 z=vec2(0);int i;
-                        for(i=0;i<I&&dot(z,z)<B;++i)z=vec2(z.x*z.x-z.y*z.y,z.x*z.y*2)+c;
-                        float s=sqrt((i-log2(log(dot(z,z))/log(B)))/float(I));
-                        F=(sin(D.x+20*s*vec4(1.5,1.8,2.1,0))*0.5+0.5)*float(i!=I);});
+#define VERTEX_SHADER                                                                         \
+"#version 330\n"                                                                          \
+"out vec2 u;void main(){u=vec2[](vec2(0),vec2(1,0),vec2(0,1),vec2(1))[gl_VertexID];"      \
+"gl_Position=vec4(vec2[](vec2(-1,-1),vec2(1,-1),vec2(-1,1),vec2(1))[gl_VertexID],0,1);}"  \
     
-    unsigned int const shader_program = compile_shaders(vertex_shader, 
-                                                        fragment_shader);
+#define FRAGMENT_SHADER                                                     \
+"#version 330\n"                                                        \
+"#define B 200000.0\n"                                                  \
+"out vec4 F;in vec2 u;uniform int I;uniform float A;uniform vec4 D;"    \
+"void main(){vec2 c=((u*2-1)*vec2(A,1)*D.y-D.zw);vec2 z=vec2(0);int i;" \
+"for(i=0;i<I&&dot(z,z)<B;++i)z=vec2(z.x*z.x-z.y*z.y,z.x*z.y*2)+c;"      \
+"float s=sqrt((i-log2(log(dot(z,z))/log(B)))/float(I));"                \
+"F=(sin(D.x+20*s*vec4(1.5,1.8,2.1,0))*0.5+0.5)*float(i!=I);}"           \
+    
+    unsigned int const shader_program = compile_shaders(VERTEX_SHADER, 
+                                                        FRAGMENT_SHADER);
     
     float color_offset = 0.0f;
     
@@ -316,7 +316,7 @@ int __cdecl main(void)
     for(;;)
     {
         // process events and messages
-        if (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE))
+        if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
         {
             TranslateMessage(&msg);
             DispatchMessageW(&msg);
@@ -330,8 +330,7 @@ int __cdecl main(void)
             
             // pass uniforms
             glUniform1f(glGetUniformLocation(shader_program, "A"),
-                        (float)global_window.width /
-                        (float)global_window.height);
+                        global_window.aspect_ratio);
             glUniform4f(glGetUniformLocation(shader_program, "D"), color_offset, global_window.smooth_scale, 
                         global_window.smooth_pos[0], global_window.smooth_pos[1]);
             glUniform1i(glGetUniformLocation(shader_program, "I"),

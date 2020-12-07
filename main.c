@@ -165,6 +165,15 @@ static LRESULT CALLBACK WinProc(HWND window_handle, UINT message, WPARAM wParam,
 
 static void create_opengl_context(HDC const device_context)
 {
+    // same as: 
+    //  static PIXELFORMATDESCRIPTOR const pfd = {
+    // .nSize = sizeof(pfd), 
+    // .dwFlags = PFD_DOUBLEBUFFER | PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW,
+    // .iPixelType = PFD_TYPE_RGBA,
+    // .cColorBits = 32,
+    // .cDepthBits = 32,
+    // .iLayerType = PFD_MAIN_PLANE
+    // };
     SetPixelFormat(device_context, 9, NULL);
     
     // create an opengl 3.3 context

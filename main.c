@@ -27,28 +27,28 @@ typedef struct Window
     int32_t max_iterations;
 } Window;
 
+
 typedef enum Keys
 {
-    KEY_W,
-    KEY_S,
-    KEY_A,
-    KEY_D,
-    KEY_PLUS1,
-    KEY_PLUS2,
-    KEY_MINUS1,
-    KEY_MINUS2,
-    KEY_UP,
-    KEY_DOWN,
-    KEY_R,
-    KEY_CTRL,
+    KEY_W = 'W',
+    KEY_S = 'S',
+    KEY_A = 'A',
+    KEY_D = 'D',
+    KEY_PLUS1 = VK_ADD,
+    KEY_PLUS2 = VK_OEM_PLUS,
+    KEY_MINUS1 = VK_SUBTRACT,
+    KEY_MINUS2 = VK_OEM_MINUS,
+    KEY_UP = VK_UP,
+    KEY_DOWN = VK_DOWN,
+    KEY_R = 'R',
+    KEY_CTRL = VK_CONTROL,
     KEY_LENGTH // needed to keep track of number of keys
 } Keys;
-
 
 // NOTE: we could use GetWindowLongPtr and SetWindowLongPtr
 // however this is much more easier
 static Window global_window;
-static bool keys[KEY_LENGTH];
+static bool keys[256];
 
 static LRESULT CALLBACK WinProc(HWND window_handle, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -86,72 +86,10 @@ static LRESULT CALLBACK WinProc(HWND window_handle, UINT message, WPARAM wParam,
             
             if (should_flip)
             {
-                switch (wParam)
-                {
-                    case 'W':
-                    {
-                        keys[KEY_W] = !keys[KEY_W];
-                    } break;
-                    
-                    case 'S':
-                    {
-                        keys[KEY_S] = !keys[KEY_S];
-                    } break;
-                    
-                    case 'A':
-                    {
-                        keys[KEY_A] = !keys[KEY_A];
-                    } break;
-                    
-                    case 'D':
-                    {
-                        keys[KEY_D] = !keys[KEY_D];
-                    } break;
-                    
-                    case 'R':
-                    {
-                        keys[KEY_R] = !keys[KEY_R];
-                    } break;
-                    
-                    case VK_CONTROL:
-                    {
-                        keys[KEY_CTRL] = !keys[KEY_CTRL];
-                    } break;
-                    
-                    case VK_OEM_PLUS:
-                    {
-                        keys[KEY_PLUS1] = !keys[KEY_PLUS1];
-                    } break;
-                    
-                    case VK_ADD:
-                    {
-                        keys[KEY_PLUS2] = !keys[KEY_PLUS2];
-                    } break;
-                    
-                    case VK_OEM_MINUS:
-                    {
-                        keys[KEY_MINUS1] = !keys[KEY_MINUS1];
-                    } break;
-                    
-                    case VK_SUBTRACT:
-                    {
-                        keys[KEY_MINUS2] = !keys[KEY_MINUS2];
-                    } break;
-                    
-                    case VK_UP:
-                    {
-                        keys[KEY_UP] = !keys[KEY_UP];
-                    } break;
-                    
-                    case VK_DOWN:
-                    {
-                        keys[KEY_DOWN] = !keys[KEY_DOWN];
-                    } break;
-                }
-                
-                if (wParam == VK_ESCAPE) ExitProcess(0);
+                keys[wParam] = !keys[wParam];
             }
             
+            if (wParam == VK_ESCAPE) ExitProcess(0);
         } break;
         
         default:
